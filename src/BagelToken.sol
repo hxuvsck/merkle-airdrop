@@ -9,7 +9,7 @@ contract BagelToken is ERC20, Ownable {
     // _mint(msg.sender, 100000 * 10 ** decimals()); <--- Initial supply
     }
 
-    function mint(address to, u256 amount) external onlyOwner {
+    function mint(address to, uint256 amount) external onlyOwner {
         _mint(to, amount);
     }
 }
