@@ -8,6 +8,7 @@ contract MerkleAirdrop {
     using SafeERC20 for IERC20;
 
     error MerkleAirdrop__InvalidProof();
+    error MerkleAirdrop__AlreadyClaimed();
 
     // some list of addresses
     // Allow someone in the list to claim tokens
@@ -25,6 +26,8 @@ contract MerkleAirdrop {
     bytes32 private immutable i_merkleRoot;
     IERC20 private immutable i_aridropToken;
 
+    mapping(address claimer => bool claimed) private s_hasClaimed;
+
     event Claim(address account, uint256 amount);
 
     constructor(bytes32 merkleRoot, IERC20 airdropToken) {
@@ -33,6 +36,9 @@ contract MerkleAirdrop {
     }
 
     function claim(address account, uint256 amount, bytes32[] calldata merkleProof) external {
+        if (s_hasClaimed[account]) {
+            revert MerkleAirdrop__AlreadyClaimed(); // now we preventing people from multiple claims!
+        }
         // Calculate using the accound and the amount, the hash -> leaf node
         bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(account, amount))));
         // we encoded the numbers together by keccak256 hashing algorithm and making the leaf node (mashed and hashed acc and amount together)
@@ -41,8 +47,15 @@ contract MerkleAirdrop {
         if (!MerkleProof.verify(merkleProof, i_merkleRoot, leaf)) {
             revert MerkleAirdrop__InvalidProof();
         }
+        s_hasClaimed[account] = true;
+
         emit Claim(account, amount);
         i_aridropToken.safeTransfer(account, amount);
         // What if the address is unable to receive ERC20 token? Then the SafeERC20 comes in place.
+
+        // A problem here facing now is when the address is in a merkle tree, but claiming clicking is far more than one and drain the fund?
+        // We need to keep the mapping of who/what address has already claimed the drop. That's why we will be doing the mapping of address above.
+
+        // s_hasClaimed[account] = true; // it is vulnerable to reentrancy attack. So it needs to be above the emit function and CEI based if claimed or not must be the first most checked in this function.
     }
 }
