@@ -42,7 +42,7 @@ contract MerkleAirdrop {
             revert MerkleAirdrop__InvalidProof();
         }
         emit Claim(account, amount);
-        i_aridropToken.transfer(account, amount);
+        i_aridropToken.safeTransfer(account, amount);
         // What if the address is unable to receive ERC20 token? Then the SafeERC20 comes in place.
     }
 }
