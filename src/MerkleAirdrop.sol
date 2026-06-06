@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC20, SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol"; // changing to utils of erc20 contract's SafeERC20 instead of IERC20 because this SafeERC20 contract is also included IERC20.
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
 contract MerkleAirdrop {
+    using SafeERC20 for IERC20;
+
     error MerkleAirdrop__InvalidProof();
 
     // some list of addresses
@@ -41,5 +43,6 @@ contract MerkleAirdrop {
         }
         emit Claim(account, amount);
         i_aridropToken.transfer(account, amount);
+        // What if the address is unable to receive ERC20 token? Then the SafeERC20 comes in place.
     }
 }
