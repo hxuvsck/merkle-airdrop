@@ -58,4 +58,17 @@ contract MerkleAirdrop {
 
         // s_hasClaimed[account] = true; // it is vulnerable to reentrancy attack. So it needs to be above the emit function and CEI based if claimed or not must be the first most checked in this function.
     }
+
+    //////////////////////////
+    //// Getter Functions ////
+    //////////////////////////
+
+    function getMerkleRoot() external view returns (bytes32) {
+        return i_merkleRoot;
+    }
+
+    function getAirdropToken() external view returns (IERC20) {
+        return i_aridropToken;
+        // See what the airdrop token address is.
+    }
 }
