@@ -4,8 +4,10 @@ pragma solidity ^0.8.20;
 import {Test, console} from "forge-std/Test.sol";
 import {MerkleAirdrop} from "../src/MerkleAirdrop.sol";
 import {BagelToken} from "../src/BagelToken.sol";
+import {DeployMerkleAirdrop} from "../script/DeployMerkleAirdrop.s.sol";
+import {ZkSyncChainChecker} from "foundry-devops/src/ZkSyncChainChecker.sol";
 
-contract MerkleAirdropTest is Test {
+contract MerkleAirdropTest is ZkSyncChainChecker, Test {
     MerkleAirdrop public airdrop;
     BagelToken public token;
 
@@ -15,23 +17,41 @@ contract MerkleAirdropTest is Test {
     bytes32 proofOne = 0x0fd7c981d39bece61f7499702bf59b3114a90e66b51ba2c53abdf7b62986c00a;
     bytes32 proofTwo = 0xe5ebd1e1b5a5478a944ecab36a9a954ac3b6b8216875f6524caa7a1d87096576;
     bytes32[] public PROOF = [proofOne, proofTwo]; // from output which locating the manually added user address which ends with ...9129D
+    address gasPayer;
     address user;
     uint256 userPrivateKey;
 
     function setUp() public {
-        token = new BagelToken();
-        airdrop = new MerkleAirdrop(ROOT, token);
-        // by adding the whitelist index 0 a generated address, we now can test it as it has already added in airdrop list
-        token.mint(token.owner(), AMOUNT_TO_SEND);
-        token.transfer(address(airdrop), AMOUNT_TO_SEND); // transfering all the amount of tokens to airdrop to send them to addresses
+        if (!isZkSyncChain()) {
+            // deploy the script
+            DeployMerkleAirdrop deployer = new DeployMerkleAirdrop();
+            (airdrop, token) = deployer.deployMerkleAirdrop();
+        } else {
+            token = new BagelToken();
+            airdrop = new MerkleAirdrop(ROOT, token);
+            token.mint(token.owner(), AMOUNT_TO_SEND);
+            token.transfer(address(airdrop), AMOUNT_TO_SEND);
+        }
+        // token = new BagelToken();
+        // airdrop = new MerkleAirdrop(ROOT, token);
+        // // by adding the whitelist index 0 a generated address, we now can test it as it has already added in airdrop list
+        // token.mint(token.owner(), AMOUNT_TO_SEND);
+        // token.transfer(address(airdrop), AMOUNT_TO_SEND); // transfering all the amount of tokens to airdrop to send them to addresses
         (user, userPrivateKey) = makeAddrAndKey("user");
+        gasPayer = makeAddr("gasPayer");
     }
 
     function testUsersCanClaim() public {
         uint256 startingBalance = token.balanceOf(user);
+        bytes32 digest = airdrop.getMessageHash(user, AMOUNT_TO_CLAIM);
 
-        vm.prank(user); // only pranks the 1 line below
-        airdrop.claim(user, AMOUNT_TO_CLAIM, PROOF);
+        // sign a message
+        // vm.prank(user); // only pranks the 1 line below
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(userPrivateKey, digest);
+
+        // gasPayer calls claim using the signed message
+        vm.prank(gasPayer);
+        airdrop.claim(user, AMOUNT_TO_CLAIM, PROOF, v, r, s);
 
         uint256 endingBalance = token.balanceOf(user);
         console.log("Ending balance is:", endingBalance);
